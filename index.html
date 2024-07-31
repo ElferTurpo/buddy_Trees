@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gestión de Memoria con Buddy System</title>
+<style>
+    .bloque-memoria {
+        border: 1px solid black;
+        display: inline-block;
+        width: 100px;
+        height: 30px;
+        margin: 2px;
+        text-align: center;
+        line-height: 30px;
+        font-size: 12px;
+    }
+    .asignado {
+        background-color: lightblue;
+    }
+    .libre {
+        background-color: lightgray;
+    }
+    .disponible {
+        background-color: lightgreen;
+    }
+</style>
+</head>
+<body>
+<h1>Gestión de Memoria con Buddy System</h1>
+<div id="memoria"></div>
+<br>
+<input type="number" id="tamañoMemoria" placeholder="Tamaño (KB)">
+<button onclick="asignarMemoria()">Asignar Memoria</button>
+<button onclick="liberarMemoria()">Liberar Memoria</button>
+<br>
+<button onclick="inicializarMemoria(32)">Inicializar Memoria (32KB)</button>
+
+<script>
+    class NodoMemoria {
+        constructor(tamaño, inicio) {
+            this.tamaño = tamaño;
+            this.inicio = inicio;
+            this.libre = true;
+            this.hijoIzq = null;
+            this.hijoDer = null;
+        }
+    }
+
+    let raizMemoria;
+    const tamañoTotal = 32;
+
+    function inicializarMemoria(tamaño) {
+        raizMemoria = new NodoMemoria(tamaño, 0);
+        actualizarVisualizacionMemoria();
+    }
+
+    function siguientePotenciaDeDos(n) {
+        let p = 1;
+        while (p < n) {
+            p *= 2;
+        }
+        return p;
+    }
+
+    function asignarMemoria() {
+        const tamaño = parseInt(document.getElementById('tamañoMemoria').value);
+        if (isNaN(tamaño) || tamaño <= 0) {
+            alert('Por favor, ingrese un tamaño válido.');
+            return;
+        }
+        const tamañoAsignado = siguientePotenciaDeDos(tamaño);
+        const nodo = buscarYDividir(raizMemoria, tamañoAsignado);
+        if (nodo) {
+            nodo.libre = false;
+            actualizarVisualizacionMemoria();
+        } else {
+            alert('No hay suficiente espacio disponible para asignar memoria del tamaño solicitado.');
+        }
+    }
+
+    function buscarYDividir(nodo, tamaño) {
+        if (!nodo.libre || nodo.tamaño < tamaño) return null;
+        if (nodo.tamaño === tamaño) return nodo;
+
+        if (!nodo.hijoIzq && !nodo.hijoDer) {
+            const mitadTamaño = nodo.tamaño / 2;
+            nodo.hijoIzq = new NodoMemoria(mitadTamaño, nodo.inicio);
+            nodo.hijoDer = new NodoMemoria(mitadTamaño, nodo.inicio + mitadTamaño);
+        }
+
+        return buscarYDividir(nodo.hijoIzq, tamaño) || buscarYDividir(nodo.hijoDer, tamaño);
+    }
+
+    function liberarMemoria() {
+        const tamaño = parseInt(document.getElementById('tamañoMemoria').value);
+        if (isNaN(tamaño) || tamaño <= 0) {
+            alert('Por favor, ingrese un tamaño válido.');
+            return;
+        }
+        const tamañoLiberado = siguientePotenciaDeDos(tamaño);
+        liberar(raizMemoria, tamañoLiberado);
+        actualizarVisualizacionMemoria();
+    }
+
+    function liberar(nodo, tamaño) {
+        if (!nodo) return false;
+
+        if (nodo.tamaño === tamaño && !nodo.libre && !nodo.hijoIzq && !nodo.hijoDer) {
+            nodo.libre = true;
+            return true;
+        }
+
+        const liberadoIzq = liberar(nodo.hijoIzq, tamaño);
+        const liberadoDer = liberar(nodo.hijoDer, tamaño);
+
+        if (liberadoIzq || liberadoDer) {
+            fusionar(nodo);
+        }
+
+        return liberadoIzq || liberadoDer;
+    }
+
+    function fusionar(nodo) {
+        if (nodo.hijoIzq && nodo.hijoDer && nodo.hijoIzq.libre && nodo.hijoDer.libre) {
+            nodo.hijoIzq = null;
+            nodo.hijoDer = null;
+            nodo.libre = true;
+        }
+    }
+
+    function actualizarVisualizacionMemoria() {
+        const memoriaDiv = document.getElementById('memoria');
+        memoriaDiv.innerHTML = '';
+        recorrerYVisualizar(raizMemoria, memoriaDiv);
+    }
+
+    function recorrerYVisualizar(nodo, contenedor) {
+        if (!nodo) return;
+
+        const bloqueDiv = document.createElement('div');
+        bloqueDiv.classList.add('bloque-memoria');
+        if (nodo.libre) {
+            if (esDisponibleParaAsignar(nodo)) {
+                bloqueDiv.classList.add('disponible');
+            } else {
+                bloqueDiv.classList.add('libre');
+            }
+        } else {
+            bloqueDiv.classList.add('asignado');
+        }
+        bloqueDiv.textContent = `${nodo.inicio}-${nodo.inicio + nodo.tamaño - 1} (${nodo.tamaño}KB)`;
+        contenedor.appendChild(bloqueDiv);
+
+        if (nodo.hijoIzq && nodo.hijoDer) {
+            recorrerYVisualizar(nodo.hijoIzq, contenedor);
+            recorrerYVisualizar(nodo.hijoDer, contenedor);
+        }
+    }
+
+    function esDisponibleParaAsignar(nodo) {
+        return nodo.libre && (!nodo.hijoIzq || !nodo.hijoDer);
+    }
+
+    inicializarMemoria(tamañoTotal);
+</script>
+</body>
+</html>
